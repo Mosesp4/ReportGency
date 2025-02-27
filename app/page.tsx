@@ -37,7 +37,7 @@ export default function Home() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row gap-4">
-            <Link href={"/submit-report"}>
+            <Link href={"/submitReport"}>
               <button className="group relative flex h-12 items-center justify-center gap-2 rounded-xl bg-sky-500 px-8 text-sm font-medium text-white transition-all hover:bg-sky-400">
                 Make Anonymous Report
                 <svg

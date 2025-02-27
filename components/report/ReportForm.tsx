@@ -1,48 +1,135 @@
-'use client'
+"use client";
 
-import { useState, useCallback } from 'react';
-import { LocationInput } from './LocationInput';
+import { useState, useCallback } from "react";
+import { LocationInput } from "./LocationInput";
+import crypto from "crypto";
 
 const REPORT_TYPES = [
-    "Theft",
-    "Fire Outbreak",
-    "Medical Emergency",
-    "Natural Disaster",
-    "Violence",
-    "Other",
+  "Theft",
+  "Fire Outbreak",
+  "Medical Emergency",
+  "Natural Disaster",
+  "Violence",
+  "Other",
 ] as const;
 
-type ReportType = 'EMERGENCY' | 'NON_EMERGENCY';
+type ReportType = "EMERGENCY" | "NON_EMERGENCY";
 
-interface ReportFormProps{
-    onComplete: (data:any) => void;
+interface ReportFormProps {
+  onComplete: (data: any) => void;
 }
 
-export function ReportForm({onComplete}:ReportFormProps) {
-    const [formData, setFormData] = useState({
-        incidentType: "" as ReportType,
-        specificType: "", 
-        location: "",
-        description: "",
-        title:"",
-    });
+export function ReportForm({ onComplete }: ReportFormProps) {
+  const [formData, setFormData] = useState({
+    incidentType: "" as ReportType,
+    specificType: "",
+    location: "",
+    description: "",
+    title: "",
+  });
+  const [image, setImage] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [coordinates, setCoordinates] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+  }>({
+    latitude: null,
+    longitude: null,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [image, setImage] = useState<string|null>(null);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [coordinate, setCoordinate] = useState<{
-        latitude: number | null;
-        longitude: number | null;
-    }>({
-        latitude: null,
-        longitude: null,
-    });
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    setIsAnalyzing(true);
 
-    return (
-        <form action="" className='space-y-8'>
+    try {
+      const base64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
 
-              {/* Emergency Type Selection */}
+      const response = await fetch("/api/analyze-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64 }),
+      });
+
+      const data = await response.json();
+
+      if (data.title && data.description && data.reportType) {
+        setFormData((prev) => ({
+          ...prev,
+          title: data.title,
+          description: data.description,
+          specificType: data.reportType,
+        }));
+        setImage(base64 as string);
+      }
+    } catch (error) {
+      console.error("Error analyzing image:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Generate hash using crypo function
+  const generateReportId = useCallback(() => {
+    const timestamp = Date.now().toString();
+    const randomBytes = crypto.randomBytes(16).toString("hex");
+    const combinedString = `${timestamp}-${randomBytes}`;
+    return crypto
+      .createHash("sha256")
+      .update(combinedString)
+      .digest("hex")
+      .slice(0, 16);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const reportData = {
+        reportId: generateReportId(),
+        type: formData.incidentType,
+        specificType: formData.specificType,
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        image: image,
+        status: "PENDING",
+      };
+
+      const response = await fetch("/api/reports/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(reportData),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to submit report");
+      }
+
+      onComplete(result);
+    } catch (error) {
+      console.error("Error submitting report:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Emergency Type Selection */}
       <div className="grid grid-cols-2 gap-4">
         <button
           type="button"
@@ -76,7 +163,6 @@ export function ReportForm({onComplete}:ReportFormProps) {
           </div>
         </button>
 
-          {/* Non-Emergency */}
         <button
           type="button"
           onClick={() =>
@@ -108,17 +194,16 @@ export function ReportForm({onComplete}:ReportFormProps) {
         </button>
       </div>
 
-        {/* image Upload */}
-      <div className='relative group'>
-          <input
-            type="file"
-            // onChange={}
-            accept="image/*"
-            className='hidden'
-            id="image-upload"
-          />
-
-<label
+      {/* Image Upload */}
+      <div className="relative group">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+          id="image-upload"
+        />
+        <label
           htmlFor="image-upload"
           className="block w-full p-8 border-2 border-dashed border-zinc-700 rounded-2xl 
                    hover:border-sky-500/50 hover:bg-sky-500/5 transition-all duration-200
@@ -187,7 +272,7 @@ export function ReportForm({onComplete}:ReportFormProps) {
         )}
       </div>
 
-      {/* Specific report Type */}
+      {/* Specific Report Type */}
       <div>
         <label className="block text-sm font-medium text-zinc-400 mb-2">
           Incident Type
@@ -218,15 +303,15 @@ export function ReportForm({onComplete}:ReportFormProps) {
           setFormData((prev) => ({ ...prev, location: value }))
         }
         onCoordinatesChange={(lat, lng) =>
-          setCoordinate({
+          setCoordinates({
             latitude: lat,
             longitude: lng,
           })
         }
       />
 
-        {/* Title */}
-        <div>
+      {/* Title */}
+      <div>
         <label className="block text-sm font-medium text-zinc-400 mb-2">
           Report Title
         </label>
@@ -315,7 +400,6 @@ export function ReportForm({onComplete}:ReportFormProps) {
           )}
         </div>
       </button>
-      
-        </form>
-    )
+    </form>
+  );
 }
