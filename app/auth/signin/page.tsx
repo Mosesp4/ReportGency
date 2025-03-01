@@ -28,8 +28,9 @@ export default function SignIn() {
       } else {
         router.push("/dashboard");
       }
-    } catch (error) {
-      setError("An error occurred during sign in");
+    } catch (err) {
+      console.error("Sign-in error:", err); // ✅ Log the error to avoid ESLint warning
+      setError("An error occurred during sign-in");
     } finally {
       setIsLoading(false);
     }

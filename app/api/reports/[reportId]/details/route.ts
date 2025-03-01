@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth"; // Ensure authOptions is imported
 
 const prisma = new PrismaClient();
 
@@ -10,9 +11,7 @@ export async function GET(
 ) {
   try {
     const report = await prisma.report.findUnique({
-      where: {
-        reportId: params.reportId,
-      },
+      where: { reportId: params.reportId },
     });
 
     if (!report) {
@@ -34,7 +33,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions); // Explicitly pass authOptions
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -47,6 +46,7 @@ export async function PATCH(
 
     return NextResponse.json(report);
   } catch (error) {
+    console.error("Error updating report:", error); // ✅ Log the error to avoid ESLint warning
     return NextResponse.json(
       { error: "Error updating report" },
       { status: 500 }

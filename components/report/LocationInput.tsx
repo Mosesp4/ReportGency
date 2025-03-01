@@ -77,7 +77,7 @@ export function LocationInput({
       </label>
       <div className="relative">
         <AddressAutofill
-          accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""}
+          accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""} 
         >
           <input
             type="text"
