@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
-
-export default nextConfig;
+const nextConfig = {
+    experimental: {
+      serverActions: true, // Ensures that dynamic server actions work correctly
+    },
+    output: "standalone", // Ensures compatibility with dynamic API routes
+  };
+  
+  export default nextConfig;
+  
